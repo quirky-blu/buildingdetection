@@ -55,3 +55,4 @@ def get_geojson(north: float, south: float, east: float, west: float):
         except:
             continue
     return JSONResponse({"type": "FeatureCollection", "features": features})
+    

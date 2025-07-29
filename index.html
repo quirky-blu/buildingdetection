@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Satellite Encroachment Map (Esri + Leaflet)</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet CDN -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<script>
+  // 1. Initialize the map centered on Indore
+  const map = L.map('map').setView([22.7196, 75.8577], 15);
+
+  // 2. Add Esri World Imagery (satellite) tile layer
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: '&copy; Esri — Source: Esri, Maxar, Earthstar Geographics',
+    maxZoom: 20
+  }).addTo(map);
+
+  let geoJsonLayer = null;
+
+  // 3. Load polygons from FastAPI backend based on map bounds
+  function loadBoxes() {
+    const bounds = map.getBounds();
+    const url = `http://localhost:8000/geojson?north=${bounds.getNorth()}&south=${bounds.getSouth()}&east=${bounds.getEast()}&west=${bounds.getWest()}`;
+
+    fetch(url)
+      .then(response => response.json())
+      .then(data => {
+        if (geoJsonLayer) map.removeLayer(geoJsonLayer);
+
+        geoJsonLayer = L.geoJSON(data, {
+          style: feature => ({
+            color: feature.properties.color || 'red',
+            weight: 2,
+            fillOpacity: 0.4
+          }),
+          onEachFeature: (feature, layer) => {
+  const p = feature.properties;
+  const popup = `
+    <b>Area:</b> ${p.area_in_meters ?? '-'} m²<br>
+    <b>Status:</b> ${p.status ?? '-'}<br>
+    <b>UID:</b> ${p.UID ?? '-'}<br>
+    <b>Latitude:</b> ${p.latitude ?? '-'}<br>
+    <b>Longitude:</b> ${p.longitude ?? '-'}
+  `;
+  layer.bindPopup(popup);
+}
+
+        }).addTo(map);
+      })
+      .catch(err => {
+        console.error('Error fetching polygons:', err);
+      });
+  }
+
+  // 4. Load boxes initially and when the user pans/zooms
+  map.on('load moveend zoomend', loadBoxes);
+  map.whenReady(loadBoxes);
+</script>
+
+</body>
+</html>
