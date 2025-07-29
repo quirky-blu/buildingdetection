@@ -2,3 +2,5 @@ tmp\models
 bld
 .env
 speedy-hold-446117-f2-f66e7c290055.json
+ignore
+tmp
